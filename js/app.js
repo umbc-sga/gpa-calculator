@@ -73,6 +73,11 @@ function calculateGPA() {
         // calculate GPA to three decimal points
         gpaReadoutEl.innerText = (gradePoints / creditsTaken).toFixed(3);
     }
+    // otherwise show no GPA (0.0)
+    else 
+    {
+        gpaReadoutEl.innerText = "0.0";
+    }
 }
 
 /**
@@ -113,7 +118,7 @@ function addCourseDiv() {
    
     // create the column for the grade select menu
     const gradeContainer = createElement(courseDiv, "div", { 
-        class: "col-sm-4" 
+        class: "col-sm-3" 
     });
     
     // create the grade select menu
@@ -131,6 +136,24 @@ function addCourseDiv() {
         option.text = grade;
         
         select.add(option);
+    });
+
+    // create a div column for the delete button
+    const buttonContainer = createElement(courseDiv, "div", { 
+        class: "col-sm-1" 
+    });
+
+    // add a course deletion button
+    createElement(buttonContainer, "button", {
+        class: "btn btn-danger",
+        textContent: "Delete",
+        onclick: () => {
+            // remove the course element
+            courseDiv.remove();
+
+            // recalculate GPA
+            calculateGPA();
+        }
     });
 }
 
