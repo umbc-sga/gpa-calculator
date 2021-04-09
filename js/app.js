@@ -1,3 +1,4 @@
+// weights for each grade value
 const GRADE_INFO = [
     {
         letter: "A",
@@ -21,7 +22,11 @@ const GRADE_INFO = [
     }
 ];
 
-const container = document.querySelector(".container-fluid");
+// global variable to store course data
+const courses = [];
+
+// references to HTML elements
+const container = document.getElementById("coursesContainer");
 const addCourseButton = document.getElementById("addCourse");
 const transcriptInput = document.getElementById("transcriptInput");
 const importCoursesButtons = document.getElementById("importCourses");
@@ -31,7 +36,7 @@ const gpaReadoutEl = document.getElementById("gpa");
  * Initialize the UI components appearance and functionality.
  */
 (function initUI() {
-    // most people take 4 or more classes, so start with 4 course divs
+    // start off with an example course div
     addCourseDiv();
 
     // bind the add course div function to the add course button
@@ -40,8 +45,131 @@ const gpaReadoutEl = document.getElementById("gpa");
 })();
 
 /**
+ * Add a row to the container that allows a student to fill in course information.
+ * @param {String} name
+ * @param {Number} credits
+ * @param {String} grade
+ * @param {Boolean} imported
+ */
+function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", imported=false) {
+    // create a course object
+    const course = {
+        name: name,
+        credits: credits,
+        grade: grade,
+        imported: imported
+    };
+
+    // add the course object to the courses array
+    courses.push(course);
+
+    // create the row div for all the inputs in their columns
+    const courseDiv = createElement(container, "div", {
+        class: "row course"
+    });
+
+    // create the column for the name input
+    const nameContainer = createElement(courseDiv, "div", {
+        class: "col-sm-4 mb-1"
+    });
+
+    // create the course name text input
+    createElement(nameContainer, "input", {
+        type: "text",
+        class: "form-control",
+        value: name,
+        oninput: e => {
+            // update course name property
+            course.name = e.target.value;
+        }
+    });
+
+    // create the column for the credits input
+    const creditContainer = createElement(courseDiv, "div", {
+        class: "col-sm-4"
+    });
+
+    // create the credits number input
+    createElement(creditContainer, "input", {
+        type: "number",
+        for: "courseCredits",
+        class: "form-control",
+        min: "0",
+        max: "4",
+        value: credits,
+        onchange: e => {
+            // update course credits property
+            course.credits = e.target.value;
+
+            // recalculate GPA
+            calculateGPA();
+        },
+        onkeyup: e => {
+            // update course credits property
+            course.credits = e.target.value;
+
+            // recalculate GPA
+            calculateGPA();
+        }
+    });
+
+    // create the column for the grade select menu
+    const gradeContainer = createElement(courseDiv, "div", {
+        class: "col-sm-3"
+    });
+
+    // create the grade select menu
+    const select = createElement(gradeContainer, "select", {
+        for: "courseGrade",
+        class: "form-control",
+        onchange: e => {
+            // update course grade property
+            course.grade = e.target.value;
+
+            // recalculate GPA
+            calculateGPA();
+        }
+    });
+
+    // add the options to the grade select menu
+    const letterGrades = GRADE_INFO.map(x => x.letter);
+    const gradeOptions = ["-", ...letterGrades];
+    gradeOptions.forEach(grade => {
+        select.add(createElement(select, "option", {
+            text: grade
+        }));
+    });
+
+    // set the value to the grade (default or otherwise)
+    select.value = grade;
+
+    // create a div column for the delete button
+    const buttonContainer = createElement(courseDiv, "div", {
+        class: "col-sm-1"
+    });
+
+    // add a course deletion button
+    createElement(buttonContainer, "button", {
+        class: "btn btn-danger",
+        textContent: "Delete",
+        onclick: () => {
+            // remove the course element
+            courseDiv.remove();
+
+            // delete course from the courses array
+            courses.splice(courses.indexOf(course), 1);
+
+            // recalculate GPA
+            calculateGPA();
+        }
+    });
+}
+
+/**
+ * Parse a PDF and extract the text contents from the pages.
  * From: https://github.com/ffalt/pdf.js-extract/blob/main/lib/index.js
- * @returns 
+ * @param {String} base64Data
+ * @returns {Object} data
  */
 async function parsePDF(base64PdfData) {
     const options = {};
@@ -101,8 +229,10 @@ async function parsePDF(base64PdfData) {
                     x = tm[5];
                     y = tm[4];
                 }
+
                 // see https://github.com/mozilla/pdf.js/issues/8276
                 const height = Math.sqrt(tm[2] * tm[2] + tm[3] * tm[3]);
+
                 return {
                     x: x,
                     y: y,
@@ -129,6 +259,12 @@ async function parsePDF(base64PdfData) {
  * Import the courses into the GPA calculator from the PDF.
  */
 async function importCourses() {
+    // make sure that the user has attached a file
+    if (transcriptInput.files.length === 0)
+    {
+        return;
+    }
+
     // get the transcript file attachment
     const transcript = transcriptInput.files[0];
 
@@ -196,14 +332,14 @@ async function importCourses() {
                     // if the course is not Pass and not a transfer credit
                     if (grade != "P" && grade != "T")
                     {
-                        addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), grade);
+                        addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), grade, true);
                     }
                 }
                 else
                 {
                     const [ attempted, earned, points ] = tokens;
 
-                    addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10));
+                    addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), "-", true);
                 }
             });
 
@@ -220,11 +356,11 @@ function calculateGPA() {
     let gradePoints = 0, creditsTaken = 0;
 
     // go through every course element
-    [...document.querySelectorAll(".course")]
+    courses
         .forEach(course => {
             // get the credit number and course grade information from the input elements
-            const credits = course.querySelector("input[for='courseCredits']").value;
-            const grade = course.querySelector("select[for='courseGrade']").value;
+            const credits = course.credits;
+            const grade = course.grade;
 
             // if the course information is complete
             if (credits && grade != "-") {
@@ -235,7 +371,7 @@ function calculateGPA() {
                 gradePoints += credits * gradeWeight;
 
                 // track the number of courses that have both credits and grade information
-                creditsTaken += parseInt(credits, 10);
+                creditsTaken += credits;
             }
         });
 
@@ -251,95 +387,13 @@ function calculateGPA() {
 }
 
 /**
- * Add a row to the container that allows a student to fill in course information.
- */
-function addCourseDiv(name="My Class", credits=3, grade="-") {
-    // create the row div for all the inputs in their columns
-    const courseDiv = createElement(container, "div", {
-        class: "row course"
-    });
-
-    // create the column for the name input
-    const nameContainer = createElement(courseDiv, "div", {
-        class: "col-sm-4 mb-1"
-    });
-
-    // create the course name text input
-    createElement(nameContainer, "input", {
-        type: "text",
-        class: "form-control",
-        value: name
-    });
-
-    // create the column for the credits input
-    const creditContainer = createElement(courseDiv, "div", {
-        class: "col-sm-4"
-    });
-
-    // create the credits number input
-    createElement(creditContainer, "input", {
-        type: "number",
-        for: "courseCredits",
-        class: "form-control",
-        min: "0",
-        max: "4",
-        value: credits,
-        onchange: calculateGPA,
-        onkeyup: calculateGPA
-    });
-
-    // create the column for the grade select menu
-    const gradeContainer = createElement(courseDiv, "div", {
-        class: "col-sm-3"
-    });
-
-    // create the grade select menu
-    const select = createElement(gradeContainer, "select", {
-        for: "courseGrade",
-        class: "form-control",
-        onchange: calculateGPA
-    });
-
-    // add the options to the grade select menu
-    const letterGrades = GRADE_INFO.map(x => x.letter);
-    const gradeOptions = ["-", ...letterGrades];
-    gradeOptions.forEach(grade => {
-        const option = document.createElement("option");
-        option.text = grade;
-
-        select.add(option);
-    });
-
-    // set the value to the grade (default or otherwise)
-    select.value = grade;
-
-    // create a div column for the delete button
-    const buttonContainer = createElement(courseDiv, "div", {
-        class: "col-sm-1"
-    });
-
-    // add a course deletion button
-    createElement(buttonContainer, "button", {
-        class: "btn btn-danger",
-        textContent: "Delete",
-        onclick: () => {
-            // remove the course element
-            courseDiv.remove();
-
-            // recalculate GPA
-            calculateGPA();
-        }
-    });
-}
-
-/**
  * Group an array of items into lines by Y-positions with some tolerance for improper line
  * alignments.
  * @param {Object[]} items
  * @param {Number} tolerance
  * @return {Object} groupedLines
  */
-function fuzzyGroupByYPos(items, tolerance = 0.3) {
+function fuzzyGroupByYPos(items, tolerance=0.3) {
     return items.reduce((linesArray, item) => {
         // get the closest previously recorded y-pos bucket
         // from: https://stackoverflow.com/questions/8584902/get-the-closest-number-out-of-an-array
@@ -369,7 +423,7 @@ function fuzzyGroupByYPos(items, tolerance = 0.3) {
  * @param {String} tag 
  * @param {Object} attributes 
  */
-function createElement(parent, tag, attributes = {}) {
+function createElement(parent, tag, attributes={}) {
     // create the element to whatever tag was given
     const el = document.createElement(tag);
 
@@ -392,11 +446,17 @@ function createElement(parent, tag, attributes = {}) {
             else if (attr == "onchange") {
                 el.onchange = value;
             }
+            else if (attr == "oninput") {
+                el.oninput = value;
+            }
             else if (attr == "onkeydown") {
                 el.onkeydown = value;
             }
             else if (attr == "onkeyup") {
                 el.onkeyup = value;
+            }
+            else if (attr == "text") {
+                el.text = value;
             }
             else if (attr == "value") {
                 el.value = value;
