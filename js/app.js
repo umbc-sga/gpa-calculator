@@ -51,13 +51,13 @@ const gpaReadoutEl = document.getElementById("gpa");
  * @param {String} grade
  * @param {Boolean} imported
  */
-function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", imported=false) {
+function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", completed=false) {
     // create a course object
     const course = {
         name: name,
         credits: credits,
         grade: grade,
-        imported: imported
+        completed: completed
     };
 
     // add the course object to the courses array
@@ -102,14 +102,14 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", import
             course.credits = e.target.value;
 
             // recalculate GPA
-            calculateGPA();
+            updateGPAReadout();
         },
         onkeyup: e => {
             // update course credits property
             course.credits = e.target.value;
 
             // recalculate GPA
-            calculateGPA();
+            updateGPAReadout();
         }
     });
 
@@ -127,7 +127,7 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", import
             course.grade = e.target.value;
 
             // recalculate GPA
-            calculateGPA();
+            updateGPAReadout();
         }
     });
 
@@ -160,7 +160,7 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", import
             courses.splice(courses.indexOf(course), 1);
 
             // recalculate GPA
-            calculateGPA();
+            updateGPAReadout();
         }
     });
 }
@@ -339,19 +339,44 @@ async function importCourses() {
                 {
                     const [ attempted, earned, points ] = tokens;
 
-                    addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), "-", true);
+                    addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10));
                 }
             });
 
-            calculateGPA();
+            updateGPAReadout();
         }
     }   
 }
 
 /**
- * Calculate the student's GPA based on their inputs.
+ * Recalculate and update the GPA readout(s) based on their inputs.
  */
-function calculateGPA() {
+function updateGPAReadout() {
+    const projectedGpaContainer = document.getElementById("projectedGpa").parentElement;
+
+    // if some of the courses are imported as complete, show two GPA counters
+    if (courses.some(x => x.completed))
+    {
+        projectedGpaContainer.style.display = "";
+
+        gpaReadoutEl.innerText = calculateGPA(courses.filter(x => x.completed));
+        document.getElementById("projectedGpa").innerText = calculateGPA(courses);
+    }
+    // hide the projected GPA readout if all courses are non-completed
+    else
+    {
+        projectedGpaContainer.style.display = "none";
+
+        gpaReadoutEl.innerText = calculateGPA(courses);
+    }  
+}
+
+/**
+ * Calculate the grade point average for a list of courses.
+ * @param {Object[]} courses 
+ * @returns {String} gpa
+ */
+function calculateGPA(courses) {
     // track the number of grade points the student has and the credit number
     let gradePoints = 0, creditsTaken = 0;
 
@@ -376,13 +401,15 @@ function calculateGPA() {
         });
 
     // if at least one course is fully filled out
-    if (creditsTaken > 0 && gradePoints > 0) {
+    if (creditsTaken > 0 && gradePoints > 0) 
+    {
         // calculate GPA to three decimal points
-        gpaReadoutEl.innerText = (gradePoints / creditsTaken).toFixed(3);
+        return (gradePoints / creditsTaken).toFixed(3);
     }
     // otherwise show no GPA (0.0)
-    else {
-        gpaReadoutEl.innerText = "0.0";
+    else 
+    {
+        return "0.0";
     }
 }
 
