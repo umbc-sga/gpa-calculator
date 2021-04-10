@@ -38,6 +38,7 @@ const gpaReadoutEl = document.getElementById("gpa");
 (function initUI() {
     // start off with an example course div
     addCourseDiv();
+    updateGPAReadout();
 
     // bind the add course div function to the add course button
     addCourseButton.onclick = () => addCourseDiv();
@@ -60,8 +61,30 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
         completed: completed
     };
 
-    // add the course object to the courses array
-    courses.push(course);
+    const firstTry = courses.find(x => x.name == course.name);
+
+    if (firstTry)
+    {
+        const grades = GRADE_INFO.map(x => x.letter);
+
+        // if the student retook the course and got a higher grade, remove the old grade
+        if (grades.indexOf(course.grade) < grades.indexOf(firstTry.grade))
+        {
+            // remove the course div
+            coursesContainer.children[courses.indexOf(firstTry)].remove();
+
+            // remove the old grade
+            courses.splice(courses.indexOf(firstTry), 1);
+
+            // add the course object to the courses array
+            courses.push(course);
+        }
+    }
+    else
+    {
+        // add the course object to the courses array
+        courses.push(course);
+    }
 
     // create the row div for all the inputs in their columns
     const courseDiv = createElement(container, "div", {
@@ -163,6 +186,9 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
             updateGPAReadout();
         }
     });
+
+    // update GPA readout for credit count
+    updateGPAReadout();
 }
 
 /**
@@ -300,8 +326,8 @@ async function importCourses() {
                     return line.includes(".00") && !line.includes("Overall Cum GPA")
                         && !line.includes("UMBC Cum GPA") && !line.includes("UMBC Term GPA")
                             && !line.includes("Overall Term GPA") && !line.includes("Test Trans GPA")
-                })
-        
+                });
+
             // go through all the course lnes
             courseLines.forEach(line => {
                 // filter out empty strings
@@ -329,8 +355,8 @@ async function importCourses() {
                 {
                     const [ attempted, earned, grade, points ] = tokens;
 
-                    // if the course is not Pass and not a transfer credit
-                    if (grade != "P" && grade != "T")
+                    // if the course is not Pass, Withdraw, or a transfer credit
+                    if (!["P", "W", "T"].includes(grade))
                     {
                         addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), grade, true);
                     }
@@ -353,6 +379,8 @@ async function importCourses() {
  */
 function updateGPAReadout() {
     const projectedGpaContainer = document.getElementById("projectedGpa").parentElement;
+
+    // document.getElementById("numCredits").textContent = courses.reduce((a, b) => a + b.credits, 0);
 
     // if some of the courses are imported as complete, show two GPA counters
     if (courses.some(x => x.completed))
