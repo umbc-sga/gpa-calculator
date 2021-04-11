@@ -30,7 +30,9 @@ const container = document.getElementById("coursesContainer");
 const addCourseButton = document.getElementById("addCourse");
 const transcriptInput = document.getElementById("transcriptInput");
 const importCoursesButtons = document.getElementById("importCourses");
-const gpaReadoutEl = document.getElementById("gpa");
+const cumulativeGpaReadoutEl = document.getElementById("gpa");
+const projectedGpaReadoutEl = document.getElementById("projectedGpa");
+const goalGPAInput = document.getElementById("goalGPA");
 
 /**
  * Initialize the UI components appearance and functionality.
@@ -43,7 +45,47 @@ const gpaReadoutEl = document.getElementById("gpa");
     // bind the add course div function to the add course button
     addCourseButton.onclick = () => addCourseDiv();
     importCoursesButtons.onclick = importCourses;
+
+    goalGPAInput.oninput = calculateGPASuggestions;
+    document.getElementById("nextSemesterCreditNum").oninput = calculateGPASuggestions;
 })();
+
+function calculateGPASuggestions() {
+    // get goal GPA from input
+    const goalGPA = parseFloat(goalGPAInput.value);
+    const pendingCredits = parseInt(document.getElementById("nextSemesterCreditNum").value, 10);
+
+    // track the number of grade points the student has and the credit number
+    let gradePoints = 0, creditsTaken = 0;
+
+    // go through every course element
+    courses
+        .forEach(course => {
+            // get the credit number and course grade information from the input elements
+            const credits = course.credits;
+            const grade = course.grade;
+
+            // if the course information is complete
+            if (credits && grade != "-") {
+                // find the grade weight for the corresponding letter grade
+                const gradeWeight = GRADE_INFO.find(x => x.letter == grade).weight;
+
+                // calculate grade points by multiplying credits by grade weight
+                gradePoints += credits * gradeWeight;
+
+                // track the number of courses that have both credits and grade information
+                creditsTaken += credits;
+            }
+        });
+
+    if (!isNaN(goalGPA) && !isNaN(pendingCredits))
+    {
+        const gradePointsNeeded = goalGPA * (creditsTaken + pendingCredits) - gradePoints;
+        const gpaNeeded = gradePointsNeeded / pendingCredits;
+
+        document.getElementById("gpaSuggestions").textContent = `If you took ${pendingCredits} credits, you would need a ${gpaNeeded.toFixed(3)} in order to make it to your goal GPA of ${goalGPA}.`;
+    }
+}
 
 /**
  * Add a row to the container that allows a student to fill in course information.
@@ -61,30 +103,8 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
         completed: completed
     };
 
-    const firstTry = courses.find(x => x.name == course.name);
-
-    if (firstTry)
-    {
-        const grades = GRADE_INFO.map(x => x.letter);
-
-        // if the student retook the course and got a higher grade, remove the old grade
-        if (grades.indexOf(course.grade) < grades.indexOf(firstTry.grade))
-        {
-            // remove the course div
-            coursesContainer.children[courses.indexOf(firstTry)].remove();
-
-            // remove the old grade
-            courses.splice(courses.indexOf(firstTry), 1);
-
-            // add the course object to the courses array
-            courses.push(course);
-        }
-    }
-    else
-    {
-        // add the course object to the courses array
-        courses.push(course);
-    }
+    // add the course object to the courses array
+    courses.push(course);
 
     // create the row div for all the inputs in their columns
     const courseDiv = createElement(container, "div", {
@@ -189,6 +209,31 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
 
     // update GPA readout for credit count
     updateGPAReadout();
+}
+
+/**
+ * Recalculate and update the GPA readout(s) based on their inputs.
+ */
+function updateGPAReadout() {
+    const projectedGpaContainer = projectedGpaReadoutEl.parentElement;
+
+    // document.getElementById("numCredits").textContent = courses.reduce((a, b) => a + b.credits, 0);
+
+    // if some of the courses are imported as complete, show two GPA counters
+    if (courses.some(x => x.completed)) 
+    {
+        projectedGpaContainer.style.display = "";
+
+        cumulativeGpaReadoutEl.innerText = calculateGPA(courses.filter(x => x.completed));
+        projectedGpaReadoutEl.innerText = calculateGPA(courses);
+    }
+    // hide the projected GPA readout if all courses are non-completed
+    else 
+    {
+        projectedGpaContainer.style.display = "none";
+
+        cumulativeGpaReadoutEl.innerText = calculateGPA(courses);
+    }
 }
 
 /**
@@ -358,6 +403,31 @@ async function importCourses() {
                     // if the course is not Pass, Withdraw, or a transfer credit
                     if (!["P", "W", "T"].includes(grade))
                     {
+                        // create a course object
+                        const course = {
+                            name: `${courseCode} ${courseName}`,
+                            credits: parseInt(attempted, 10),
+                            grade: grade,
+                            completed: true
+                        };
+
+                        const firstTry = courses.find(x => x.name == course.name);
+
+                        if (firstTry)
+                        {
+                            const grades = GRADE_INFO.map(x => x.letter);
+
+                            // if the student retook the course and got a higher grade, remove the old grade
+                            if (grades.indexOf(course.grade) < grades.indexOf(firstTry.grade))
+                            {
+                                // remove the course div
+                                coursesContainer.children[courses.indexOf(firstTry)].remove();
+
+                                // remove the old grade
+                                courses.splice(courses.indexOf(firstTry), 1);
+                            }
+                        }
+
                         addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10), grade, true);
                     }
                 }
@@ -366,37 +436,12 @@ async function importCourses() {
                     const [ attempted, earned, points ] = tokens;
 
                     addCourseDiv(`${courseCode} ${courseName}`, parseInt(attempted, 10));
-                }
+                }               
             });
 
             updateGPAReadout();
         }
     }   
-}
-
-/**
- * Recalculate and update the GPA readout(s) based on their inputs.
- */
-function updateGPAReadout() {
-    const projectedGpaContainer = document.getElementById("projectedGpa").parentElement;
-
-    // document.getElementById("numCredits").textContent = courses.reduce((a, b) => a + b.credits, 0);
-
-    // if some of the courses are imported as complete, show two GPA counters
-    if (courses.some(x => x.completed))
-    {
-        projectedGpaContainer.style.display = "";
-
-        gpaReadoutEl.innerText = calculateGPA(courses.filter(x => x.completed));
-        document.getElementById("projectedGpa").innerText = calculateGPA(courses);
-    }
-    // hide the projected GPA readout if all courses are non-completed
-    else
-    {
-        projectedGpaContainer.style.display = "none";
-
-        gpaReadoutEl.innerText = calculateGPA(courses);
-    }  
 }
 
 /**
