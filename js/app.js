@@ -234,6 +234,9 @@ function updateGPAReadout() {
 
         cumulativeGpaReadoutEl.innerText = calculateGPA(courses);
     }
+
+    // re-calculate GPA suggestions if GPA is changed too
+    calculateGPASuggestions();
 }
 
 /**
