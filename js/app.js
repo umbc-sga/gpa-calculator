@@ -32,7 +32,20 @@ const transcriptInput = document.getElementById("transcriptInput");
 const importCoursesButtons = document.getElementById("importCourses");
 const cumulativeGpaReadoutEl = document.getElementById("gpa");
 const projectedGpaReadoutEl = document.getElementById("projectedGpa");
+const bcpmGpaReadoutEl = document.getElementById("bcpmGpa");
 const goalGPAInput = document.getElementById("goalGPA");
+
+const latinHonorsAlert = document.getElementById("latinHonorsAlert");
+const latinHonorsTextEl = document.getElementById("latinHonors");
+
+const gpaWarningAlert = document.getElementById("gpaWarningAlert");
+const gpaWarningMsgEl = document.getElementById("gpaWarningMsg");
+
+const graduationDangerAlert = document.getElementById("graduationDangerAlert");
+
+const meritScholarToggle = document.getElementById("meritScholar");
+const preHealthToggle = document.getElementById("preHealth");
+const graduatingSoonToggle = document.getElementById("graduatingSoon");
 
 /**
  * Initialize the UI components appearance and functionality.
@@ -40,7 +53,7 @@ const goalGPAInput = document.getElementById("goalGPA");
 (function initUI() {
     // start off with an example course div
     addCourseDiv();
-    updateGPAReadout();
+    updateGPAReadouts();
 
     // bind the add course div function to the add course button
     addCourseButton.onclick = () => addCourseDiv();
@@ -48,8 +61,16 @@ const goalGPAInput = document.getElementById("goalGPA");
 
     goalGPAInput.oninput = calculateGPASuggestions;
     document.getElementById("nextSemesterCreditNum").oninput = calculateGPASuggestions;
+
+    // update the GPA stuff if features are enabled
+    meritScholarToggle.oninput = updateGPAReadouts;
+    preHealthToggle.oninput = updateGPAReadouts;
+    graduatingSoonToggle.oninput = updateGPAReadouts;
 })();
 
+/**
+ * Calculate suggestions for the GPA coach.
+ */
 function calculateGPASuggestions() {
     // get goal GPA from input
     const goalGPA = parseFloat(goalGPAInput.value);
@@ -85,6 +106,100 @@ function calculateGPASuggestions() {
 
         document.getElementById("gpaSuggestions").textContent = `If you took ${pendingCredits} credits, you would need a ${gpaNeeded.toFixed(3)} in order to make it to your goal GPA of ${goalGPA}.`;
     }
+}
+
+/**
+ * Recalculate and update the GPA readout(s) based on their inputs.
+ */
+function updateGPAReadouts() {
+    // if some of the courses are imported as complete, show two GPA counters
+    const projectedGpaContainer = projectedGpaReadoutEl.parentElement;
+    if (courses.some(x => x.completed)) 
+    {
+        projectedGpaContainer.style.display = "";
+
+        cumulativeGpaReadoutEl.innerText = calculateGPA(courses.filter(x => x.completed));
+        projectedGpaReadoutEl.innerText = calculateGPA(courses);
+    }
+    // hide the projected GPA readout if all courses are non-completed
+    else 
+    {
+        projectedGpaContainer.style.display = "none";
+
+        cumulativeGpaReadoutEl.innerText = calculateGPA(courses);
+    }
+
+    // if the student is pre-health, show BCPM (Bio, Chem, Phys, Math) GPA
+    const bcpmGpaContainer = bcpmGpaReadoutEl.parentElement;
+    bcpmGpaContainer.style.display = "none";
+    if (preHealthToggle.checked)
+    {
+        bcpmGpaContainer.style.display = "";
+
+        const bcpmCourses = courses
+            .filter(x => {
+                const department = x.name.split(" ")[0];
+
+                return ["BIOL", "CHEM", "MATH", "PHYS", "STAT"].includes(department);
+            });
+
+        bcpmGpaReadoutEl.textContent = calculateGPA(bcpmCourses);
+    }
+
+    // hide contingent alerts
+    latinHonorsAlert.style.display = "none";
+    gpaWarningAlert.style.display = "none";
+    graduationDangerAlert.style.display = "none";
+
+    // get gpa as float for comparisons
+    const gpa = parseFloat(calculateGPA(courses));
+
+    // only caclulate latin honors for people graduating soon
+    if (graduatingSoonToggle.checked)
+    {
+        // check if the GPA qualifies for latin honors
+        // source: https://registrar.umbc.edu/university-honors/
+        if (gpa > 3.95) 
+        {
+            latinHonorsAlert.style.display = "";
+            latinHonorsTextEl.textContent = "Summa cum laude";
+        }
+        else if (gpa > 3.75 && gpa < 3.9499) 
+        {
+            latinHonorsAlert.style.display = "";
+            latinHonorsTextEl.textContent = "Magna cum laude";
+        }
+        else if (gpa > 3.5 && gpa < 3.7499) 
+        {
+            latinHonorsAlert.style.display = "";
+            latinHonorsTextEl.textContent = "Cum laude";
+        }
+    }
+
+    graduationDangerAlert.style.display = "none";
+    gpaWarningAlert.style.display = "none";
+        
+    // show graduation danger alert if user is near or below 2.0 GPA 
+    if (gpa < 2.2) 
+    {
+        // make sure that there is a class w/ a grade before showing the danger alert
+        if (courses.filter(x => x.grade != "-").length) 
+        {
+            graduationDangerAlert.style.display = "";
+        }
+    }
+    // show GPA warning if they are a merit scholar and near or below a 3.25 GPA
+    else if (gpa < 3.4) 
+    {
+        if (meritScholarToggle.checked) 
+        {
+            gpaWarningAlert.style.display = "";
+            gpaWarningMsgEl.innerHTML = `UMBC Merit Scholars must maintain a minimum cumulative 3.25 grade point average in order to remain eligible for their scholarship (<a href="https://scholarships.umbc.edu/currentscholars/">Source</a>).`;
+        }
+    }
+
+    // re-calculate GPA suggestions if GPA is changed too
+    calculateGPASuggestions();
 }
 
 /**
@@ -124,6 +239,8 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
         oninput: e => {
             // update course name property
             course.name = e.target.value;
+
+            updateGPAReadouts();
         }
     });
 
@@ -145,14 +262,14 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
             course.credits = e.target.value;
 
             // recalculate GPA
-            updateGPAReadout();
+            updateGPAReadouts();
         },
         onkeyup: e => {
             // update course credits property
             course.credits = e.target.value;
 
             // recalculate GPA
-            updateGPAReadout();
+            updateGPAReadouts();
         }
     });
 
@@ -170,7 +287,7 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
             course.grade = e.target.value;
 
             // recalculate GPA
-            updateGPAReadout();
+            updateGPAReadouts();
         }
     });
 
@@ -203,40 +320,12 @@ function addCourseDiv(name="Enter Class Name Here", credits=3, grade="-", comple
             courses.splice(courses.indexOf(course), 1);
 
             // recalculate GPA
-            updateGPAReadout();
+            updateGPAReadouts();
         }
     });
 
     // update GPA readout for credit count
-    updateGPAReadout();
-}
-
-/**
- * Recalculate and update the GPA readout(s) based on their inputs.
- */
-function updateGPAReadout() {
-    const projectedGpaContainer = projectedGpaReadoutEl.parentElement;
-
-    // document.getElementById("numCredits").textContent = courses.reduce((a, b) => a + b.credits, 0);
-
-    // if some of the courses are imported as complete, show two GPA counters
-    if (courses.some(x => x.completed)) 
-    {
-        projectedGpaContainer.style.display = "";
-
-        cumulativeGpaReadoutEl.innerText = calculateGPA(courses.filter(x => x.completed));
-        projectedGpaReadoutEl.innerText = calculateGPA(courses);
-    }
-    // hide the projected GPA readout if all courses are non-completed
-    else 
-    {
-        projectedGpaContainer.style.display = "none";
-
-        cumulativeGpaReadoutEl.innerText = calculateGPA(courses);
-    }
-
-    // re-calculate GPA suggestions if GPA is changed too
-    calculateGPASuggestions();
+    updateGPAReadouts();
 }
 
 /**
@@ -442,7 +531,7 @@ async function importCourses() {
                 }               
             });
 
-            updateGPAReadout();
+            updateGPAReadouts();
         }
     }   
 }

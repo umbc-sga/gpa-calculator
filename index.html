@@ -9,32 +9,50 @@
     <body>
         <h1 class="text-center">GPA Calculator</h1>
 
-        <section class="container-fluid">
-            <!-- <div class="alert alert-secondary alert-dismissible fade show" role="alert">
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            
-                <h4>GPA Cutoffs to Remember</h4>
-                <ul class="mb-0">
-                    <li>
-                        If you are a UMBC Merit Scholar, you must maintain a minimum cumulative 3.25 grade point average (<a href="https://scholarships.umbc.edu/currentscholars/">Source</a>).
-                    </li>
+        <section class="container-fluid mb-2">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h4 class="mb-0">Settings</h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1">
+                        <b>Check all that apply:</b>
+                        <span class="text-muted">(Your answers will enable specific features.)</span>
+                    </p>
 
-                    <li>
-                        In order to graduate from UMBC, you must maintain a minimum cumulative GPA of 2.0 (<a href="https://catalog.umbc.edu/content.php?catoid=1&navoid=40">Source</a>).
-                    </li>
-                </ul>
-            </div> -->
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="meritScholar">
+                        <label class="form-check-label" for="meritScholar">
+                            Merit Scholar
+                        </label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="preHealth">
+                        <label class="form-check-label" for="preHealth">
+                            Pre-Health Student (Pre-Med, Pre-PA, Pre-Dent)
+                        </label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="graduatingSoon">
+                        <label class="form-check-label" for="graduatingSoon">
+                            Graduating Soon
+                        </label>
+                    </div>
+                </div>
+            </div>
 
             <div class="sticky-top">
                 <h2 class="text-center">
-                    <!-- <span class="badge bg-info">
-                        Num Credits:
-                        <span id="numCredits">0</span>
-                    </span> -->
-
                     <span class="badge bg-primary">
                         Cumulative GPA:
                         <span id="gpa">0.0</span>
+                    </span>
+
+                    <span class="badge bg-secondary" style="display: none">
+                        Sci/Math GPA:
+                        <span id="bcpmGpa">0.0</span>
                     </span>
 
                     <span class="badge bg-success" style="display: none">
@@ -60,64 +78,78 @@
 
             <div id="coursesContainer" class="row"></div>
 
-            <button id="addCourse" class="btn btn-success">Add Course</button>
+            <button id="addCourse" class="btn btn-success mt-2">Add Course</button>
         </section>
 
-        <section class="container-fluid mt-1">
-            <div class="input-group mt-2">
+        <section class="container-fluid">
+            <div id="latinHonorsAlert" class="alert alert-dismissible alert-success" role="alert" style="display: none">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    
+                <b>Congratulations!</b> This GPA qualifies you for graduating <i id="latinHonors"></i> (<a href="https://registrar.umbc.edu/university-honors/">What is this?</a>).
+            </div>
+
+            <div id="gpaWarningAlert" class="alert alert-dismissible alert-warning" role="alert" style="display: none">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    
+                <b>Warning:</b> <span id="gpaWarningMsg"></span>
+            </div>
+
+            <div id="graduationDangerAlert" class="alert alert-dismissible alert-danger" role="alert" style="display: none">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    
+                In order to graduate from UMBC, you must maintain a minimum cumulative GPA of 2.0 (<a href="https://catalog.umbc.edu/content.php?catoid=1&navoid=40">Source</a>).
+            </div>
+
+            <div class="alert alert-secondary alert-dismissible mb-2">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+
+                <p>
+                    <b>Hello!</b> If you want to import your previous course grades, please attach a PDF copy of your Unofficial Transcript from <a href="https://my.umbc.edu/go/transcript-unofficial">Peoplesoft</a> to the file input below and then click the "Import Courses" button.<br>
+                </p>
+
+                <b>Things to Note:</b>
+                <ul>
+                    <li>Courses with a P (Pass), T (Transfer), or W (Withdraw) will not be imported.</li>
+                    <li>Only the highest grade entry of a retaken course will be imported.</li>
+                </ul>
+
+                <p class="mb-0">
+                    <b>Privacy Notice: </b>Your Unofficial Transcript is only analyzed locally, meaning that it never leaves your device.
+                </p>
+            </div>
+
+            <div class="input-group mb-2">
                 <input type="file" class="form-control" id="transcriptInput" aria-describedby="importCourses" aria-label="Upload">
                 <button class="btn btn-primary" type="button" id="importCourses">Import Courses</button>
             </div>
 
-            <p class="mt-2">
-                <b>Info:</b> If you want to import your previous course grades, please upload a PDF copy of your Unofficial Transcript from <a href="https://my.umbc.edu/go/transcript-unofficial">Peoplesoft</a>.<br>
-            </p>
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">GPA Coach</h5>
+                </div>
 
-            <b>Things to Note:</b>
-            <ul>
-                <li>Courses with a P (Pass), T (Transfer), or W (Withdraw) will not be imported.</li>
-                <li>Only the highest grade entry of a retaken course will be imported.</li>
-            </ul>
+                <div class="card-body">
+                    <p>
+                        GPA Coach is a tool that tells you, given how many credits you plan on taking, what GPA you will have to get whilst taking that number of credits in order to raise your GPA to a certain target GPA.
+                    </p>
 
-            <p>
-                <b>Privacy Notice: </b>Your Unofficial Transcript is only analyzed locally, meaning that it never leaves your device.
-            </p>
+                    <p>
+                        If the GPA you need to get in order to reach your target GPA is below 0 or above a 4 then it is impossible to reach your target GPA in that amount of credits, which in that case means you either need to raise the number of credits, or lower your target.
+                    </p>
 
-            <div class="accordion" id="accordionExample">
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingOne">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne"
-                            aria-expanded="true" aria-controls="collapseOne">
-                            GPA Coach
-                        </button>
-                    </h2>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="basic-addon1">Goal GPA:</span>
 
-                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne"
-                        data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <p>
-                                GPA Coach is a tool that tells you, given how many credits you plan on taking, what GPA you will have to get whilst taking that number of credits in order to raise your GPA to a certain target GPA.
-                            </p>
-
-                            <p>
-                                If the GPA you need to get in order to reach your target GPA is below 0 or above a 4 then it is impossible to reach your target GPA in that amount of credits, which in that case means you either need to raise the number of credits, or lower your target.
-                            </p>
-
-                            <div class="input-group mb-3">
-                                <span class="input-group-text" id="basic-addon1">Goal GPA:</span>
-
-                                <input id="goalGPA" type="number" min="0" max="4" step=".1" class="form-control">
-                            </div>
-
-                            <div class="input-group mb-3">
-                                <span class="input-group-text" id="basic-addon1"># of Credits:</span>
-
-                                <input id="nextSemesterCreditNum" type="number" min="0" class="form-control">
-                            </div>
-
-                            <p id="gpaSuggestions"></p>
-                        </div>
+                        <input id="goalGPA" type="number" min="0" max="4" step=".1" class="form-control">
                     </div>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="basic-addon1"># of Credits:</span>
+
+                        <input id="nextSemesterCreditNum" type="number" min="0" class="form-control">
+                    </div>
+
+                    <p id="gpaSuggestions" class="mb-0 fw-bold">Your GPA plan will appear here once calculated.</p>
                 </div>
             </div>
         </section>
